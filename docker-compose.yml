@@ -91,13 +91,19 @@ services:
       dockerfile: Dockerfile
     container_name: cbi-gestordocumental-documentos-vigentes-fsm-designer
     ports:
-      - "4105:80"
+      - "4105:4105"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
     environment:
       - VITE_XSTATE_INSPECTOR_URL=wss://xstate.cbi.gestordocumental.documentosvigentes.controller-ai.com
       - VITE_API_URL=https://api.cbi.gestordocumental.documentosvigentes.controller-ai.com
+    depends_on:
+      - cbi-gestordocumental-documentos-vigentes-app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4105/"]
       interval: 30s
       timeout: 10s
       retries: 3
