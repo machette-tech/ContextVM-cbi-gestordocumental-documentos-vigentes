@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  cbi-gestordocumental-documentos-vigentes-relay:
+    image: scsibug/nostr-rs-relay:latest
+    container_name: cbi-gestordocumental-documentos-vigentes-relay
+    ports:
+      - "8085:3334"
+    volumes:
+      - ./relay-config:/usr/src/app/config:ro
+      - ./relay-data:/usr/src/app/db
+    environment:
+      - RUST_LOG=info,nostr_rs_relay=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3334"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cbi-gestordocumental-documentos-vigentes-postgres:
+    image: postgres:16-alpine
+    container_name: cbi-gestordocumental-documentos-vigentes-postgres
+    environment:
+      POSTGRES_DB: cbi_gestordocumental_documentos_vigentes_dev
+      POSTGRES_USER: contextvm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contextvm_secure_2024}
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contextvm -d cbi_gestordocumental_documentos_vigentes_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cbi-gestordocumental-documentos-vigentes-app:
+    build:
+      context: ./cbi-gestordocumental-documentos-vigentes
+      dockerfile: Dockerfile
+    container_name: cbi-gestordocumental-documentos-vigentes-app
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://contextvm:${POSTGRES_PASSWORD:-contextvm_secure_2024}@cbi-gestordocumental-documentos-vigentes-postgres:5432/cbi_gestordocumental_documentos_vigentes_dev
+      - RELAY_URL=ws://cbi-gestordocumental-documentos-vigentes-relay:3334
+      - RELAY_URL_PUBLIC=wss://relay.cbi.gestordocumental.documentosvigentes.controller-ai.com
+      - XSTATE_INSPECTOR_URL=ws://cbi-gestordocumental-documentos-vigentes-xstate:4001
+    depends_on:
+      cbi-gestordocumental-documentos-vigentes-postgres:
+        condition: service_healthy
+      cbi-gestordocumental-documentos-vigentes-relay:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./cbi-gestordocumental-documentos-vigentes/src:/app/src
+      - /app/node_modules
+
+  cbi-gestordocumental-documentos-vigentes-xstate:
+    image: statelyai/inspector:latest
+    container_name: cbi-gestordocumental-documentos-vigentes-xstate
+    ports:
+      - "4005:4004"
+      - "8770:8769"
+      - "4001:4001"
+    environment:
+      - PORT=4004
+      - WEBSOCKET_PORT=4001
+      - PUBLIC_PORT=8769
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cbi-gestordocumental-documentos-vigentes-fsm-designer:
+    build:
+      context: ./fsm-designer
+      dockerfile: Dockerfile
+    container_name: cbi-gestordocumental-documentos-vigentes-fsm-designer
+    ports:
+      - "4105:80"
+    environment:
+      - VITE_XSTATE_INSPECTOR_URL=wss://xstate.cbi.gestordocumental.documentosvigentes.controller-ai.com
+      - VITE_API_URL=https://api.cbi.gestordocumental.documentosvigentes.controller-ai.com
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  relay_data:
+
+networks:
+  default:
+    name: cbi-gestordocumental-documentos-vigentes-network
