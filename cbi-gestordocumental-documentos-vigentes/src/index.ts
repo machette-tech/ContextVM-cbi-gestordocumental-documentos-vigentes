@@ -4,8 +4,6 @@
 
 import 'dotenv/config';
 import express from 'express';
-import { createActor } from 'xstate';
-import { documentoVigenteMachine } from './machines/documento-vigente.machine.js';
 import { NostrService } from './services/nostr.service.js';
 import { DatabaseService } from './services/database.service.js';
 import { DocumentoService } from './services/documento.service.js';
@@ -47,7 +45,7 @@ async function initializeServices() {
 /**
  * Health check endpoint
  */
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     service: 'cbi-gestordocumental-documentos-vigentes',
@@ -161,7 +159,7 @@ app.get('/documentos', async (req, res) => {
 /**
  * Get metrics
  */
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', async (_req, res) => {
   try {
     const metrics = await documentoService.getMetrics();
     res.json(metrics);

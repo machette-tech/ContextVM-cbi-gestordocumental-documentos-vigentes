@@ -10,7 +10,6 @@ import { logger } from '../utils/logger.js';
 import type {
   DocumentoVigenteContext,
   CrearDocumentoInput,
-  DocumentoVigenteEvents,
 } from '../types/documento.js';
 
 export class DocumentoService {
@@ -109,21 +108,20 @@ export class DocumentoService {
       // Create initial context
       const initialContext: DocumentoVigenteContext = {
         token_id: tokenId,
+        instance_id: `${tokenId}-${Date.now()}`,
+        tipo_documento: input.tipo_documento,
+        codigo: input.codigo,
         nombre: input.nombre,
-        descripcion: input.descripcion,
         categoria: input.categoria,
         formato: input.formato,
         version: input.version || '1.0.0',
-        metadatos: input.metadatos || {},
-        autor: input.autor,
-        organizacion: input.organizacion || process.env.ORGANIZATION_NAME || '',
-        estado: 'registro',
-        fecha_registro: new Date(),
+        descripcion: input.descripcion,
         requisitos_legales: input.requisitos_legales || [],
-        tags: input.tags || [],
-        vigente_desde: input.vigente_desde,
-        vigente_hasta: input.vigente_hasta,
-        ubicacion_fisica: input.ubicacion_fisica,
+        campos_obligatorios: input.campos_obligatorios || [],
+        plantilla_url: input.plantilla_url,
+        metadata: input.metadata || {},
+        estado_actual: 'registro',
+        fecha_creacion: new Date().toISOString(),
       };
 
       // Create actor
@@ -193,7 +191,8 @@ export class DocumentoService {
           input: documento,
         });
 
-        actor.subscribe((state) => {
+        actor.subscribe((state: any) => {
+          logger.info({ tokenId, estado: state.value }, 'State changed');
           this.saveState(tokenId, state.context as DocumentoVigenteContext);
         });
 
@@ -203,14 +202,20 @@ export class DocumentoService {
 
       // Send event
       const eventMap: Record<string, any> = {
-        validar: { type: 'VALIDAR', validador: data.validador },
-        rechazar: { type: 'RECHAZAR', motivo_rechazo: data.motivo_rechazo, rechazado_por: data.rechazado_por },
-        aprobar: { type: 'APROBAR', aprobador: data.aprobador },
-        activar: { type: 'ACTIVAR', fecha_vigencia: data.fecha_vigencia, fecha_caducidad: data.fecha_caducidad },
-        marcar_obsoleto: {
-          type: 'MARCAR_OBSOLETO',
-          sustituido_por: data.sustituido_por,
-          motivo_obsolescencia: data.motivo_obsolescencia,
+        validar: { type: 'VALIDAR', validador_id: data.validador_id },
+        rechazar: { type: 'RECHAZAR', motivo: data.motivo, rechazado_por: data.rechazado_por },
+        aprobar: { type: 'APROBAR', aprobador_id: data.aprobador_id, comentarios: data.comentarios },
+        activar: { 
+          type: 'ACTIVAR', 
+          vigencia_desde: data.vigencia_desde, 
+          vigencia_hasta: data.vigencia_hasta,
+          activado_por: data.activado_por
+        },
+        obsoleter: {
+          type: 'OBSOLETER',
+          motivo: data.motivo,
+          obsoleto_por: data.obsoleto_por,
+          reemplazado_por: data.reemplazado_por,
         },
       };
 
@@ -234,7 +239,7 @@ export class DocumentoService {
           ['token_id', tokenId],
           ['action', 'transition'],
           ['transition', transition],
-          ['estado', context.estado],
+          ['estado', context.estado_actual],
         ],
         content: JSON.stringify({ transition, data, context }),
         pubkey: this.nostrService.getPublicKey(),
@@ -243,7 +248,7 @@ export class DocumentoService {
       return {
         success: true,
         token_id: tokenId,
-        estado: context.estado,
+        estado: context.estado_actual,
         event_id: nostrEvent.id,
       };
     } catch (error) {
@@ -261,7 +266,7 @@ export class DocumentoService {
   private async saveState(tokenId: string, context: DocumentoVigenteContext): Promise<void> {
     try {
       await this.dbService.saveDocumento(context);
-      logger.debug({ tokenId, estado: context.estado }, 'State saved');
+      logger.debug({ tokenId, estado: context.estado_actual }, 'State saved');
     } catch (error) {
       logger.error({ error, tokenId }, 'Error saving state');
     }

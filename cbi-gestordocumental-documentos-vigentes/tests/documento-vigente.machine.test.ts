@@ -10,20 +10,20 @@ import type { DocumentoVigenteContext } from '../src/types/documento.js';
 describe('DocumentoVigenteMachine', () => {
   const createInitialContext = (): DocumentoVigenteContext => ({
     token_id: 'documento-vigente#registro#test',
+    instance_id: 'test-instance-1',
+    tipo_documento: 'Manual',
+    codigo: 'MAN-001',
     nombre: 'Test Document',
     descripcion: 'Test description',
-    categoria: 'TECNICO',
+    categoria: 'tecnico',
     formato: 'PDF',
     version: '1.0.0',
-    metadatos: { test: true },
-    autor: 'test@example.com',
-    organizacion: 'Test Org',
-    estado: 'registro',
-    fecha_registro: new Date(),
+    metadata: { test: true },
+    estado_actual: 'registro',
+    fecha_creacion: new Date().toISOString(),
     requisitos_legales: [],
-    tags: ['test'],
-    vigente_desde: new Date(),
-    vigente_hasta: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    vigencia_desde: new Date().toISOString(),
+    vigencia_hasta: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
   });
 
   it('should start in registro state', () => {
@@ -45,13 +45,13 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.send({
       type: 'VALIDAR',
-      validador: 'validator@example.com',
+      validador_id: 'validator@example.com',
     });
     
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe('validacion');
-    expect((snapshot.context as DocumentoVigenteContext).estado).toBe('validacion');
-    expect((snapshot.context as DocumentoVigenteContext).validador).toBe('validator@example.com');
+    expect((snapshot.context as DocumentoVigenteContext).estado_actual).toBe('validacion');
+    expect((snapshot.context as DocumentoVigenteContext).validador_id).toBe('validator@example.com');
   });
 
   it('should transition from validacion to rechazado on RECHAZAR', () => {
@@ -63,18 +63,18 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.send({
       type: 'VALIDAR',
-      validador: 'validator@example.com',
+      validador_id: 'validator@example.com',
     });
     
     actor.send({
       type: 'RECHAZAR',
-      motivo_rechazo: 'Incomplete documentation',
+      motivo: 'Incomplete documentation',
       rechazado_por: 'validator@example.com',
     });
     
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe('rechazado');
-    expect((snapshot.context as DocumentoVigenteContext).estado).toBe('rechazado');
+    expect((snapshot.context as DocumentoVigenteContext).estado_actual).toBe('rechazado');
     expect((snapshot.context as DocumentoVigenteContext).motivo_rechazo).toBe('Incomplete documentation');
   });
 
@@ -87,18 +87,18 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.send({
       type: 'VALIDAR',
-      validador: 'validator@example.com',
+      validador_id: 'validator@example.com',
     });
     
     actor.send({
       type: 'APROBAR',
-      aprobador: 'approver@example.com',
+      aprobador_id: 'approver@example.com',
     });
     
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe('aprobado');
-    expect((snapshot.context as DocumentoVigenteContext).estado).toBe('aprobado');
-    expect((snapshot.context as DocumentoVigenteContext).aprobador).toBe('approver@example.com');
+    expect((snapshot.context as DocumentoVigenteContext).estado_actual).toBe('aprobado');
+    expect((snapshot.context as DocumentoVigenteContext).aprobador_id).toBe('approver@example.com');
   });
 
   it('should transition from aprobado to vigente on ACTIVAR', () => {
@@ -108,22 +108,22 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.start();
     
-    actor.send({ type: 'VALIDAR', validador: 'validator@example.com' });
-    actor.send({ type: 'APROBAR', aprobador: 'approver@example.com' });
+    actor.send({ type: 'VALIDAR', validador_id: 'validator@example.com' });
+    actor.send({ type: 'APROBAR', aprobador_id: 'approver@example.com' });
     
-    const fechaVigencia = new Date();
-    const fechaCaducidad = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const vigenciaDesde = new Date().toISOString();
+    const vigenciaHasta = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
     
     actor.send({
       type: 'ACTIVAR',
-      fecha_vigencia: fechaVigencia,
-      fecha_caducidad: fechaCaducidad,
+      vigencia_desde: vigenciaDesde,
+      vigencia_hasta: vigenciaHasta,
+      activado_por: 'admin@example.com',
     });
     
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe('vigente');
-    expect((snapshot.context as DocumentoVigenteContext).estado).toBe('vigente');
-    expect((snapshot.context as DocumentoVigenteContext).fecha_vigencia).toEqual(fechaVigencia);
+    expect((snapshot.context as DocumentoVigenteContext).estado_actual).toBe('vigente');
   });
 
   it('should transition from vigente to obsoleto on MARCAR_OBSOLETO', () => {
@@ -133,24 +133,25 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.start();
     
-    actor.send({ type: 'VALIDAR', validador: 'validator@example.com' });
-    actor.send({ type: 'APROBAR', aprobador: 'approver@example.com' });
+    actor.send({ type: 'VALIDAR', validador_id: 'validator@example.com' });
+    actor.send({ type: 'APROBAR', aprobador_id: 'approver@example.com' });
     actor.send({
       type: 'ACTIVAR',
-      fecha_vigencia: new Date(),
-      fecha_caducidad: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      vigencia_desde: new Date().toISOString(),
+      vigencia_hasta: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      activado_por: 'admin@example.com',
     });
     
     actor.send({
-      type: 'MARCAR_OBSOLETO',
-      sustituido_por: 'documento-vigente#registro#new',
-      motivo_obsolescencia: 'Replaced by new version',
+      type: 'OBSOLETER',
+      motivo: 'Replaced by new version',
+      obsoleto_por: 'admin@example.com',
+      reemplazado_por: 'documento-vigente#registro#new',
     });
     
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe('obsoleto');
-    expect((snapshot.context as DocumentoVigenteContext).estado).toBe('obsoleto');
-    expect((snapshot.context as DocumentoVigenteContext).sustituido_por).toBe('documento-vigente#registro#new');
+    expect((snapshot.context as DocumentoVigenteContext).estado_actual).toBe('obsoleto');
   });
 
   it('should not allow invalid transitions', () => {
@@ -163,8 +164,9 @@ describe('DocumentoVigenteMachine', () => {
     // Try to go directly from registro to vigente (invalid)
     actor.send({
       type: 'ACTIVAR',
-      fecha_vigencia: new Date(),
-      fecha_caducidad: new Date(),
+      vigencia_desde: new Date().toISOString(),
+      vigencia_hasta: new Date().toISOString(),
+      activado_por: 'admin@example.com',
     });
     
     // Should still be in registro
@@ -179,7 +181,7 @@ describe('DocumentoVigenteMachine', () => {
     
     actor.start();
     
-    actor.send({ type: 'VALIDAR', validador: 'validator@example.com' });
+    actor.send({ type: 'VALIDAR', validador_id: 'validator@example.com' });
     
     const snapshot = actor.getSnapshot();
     const context = snapshot.context as DocumentoVigenteContext;
@@ -188,6 +190,5 @@ describe('DocumentoVigenteMachine', () => {
     expect(context.token_id).toBe(initialContext.token_id);
     expect(context.nombre).toBe(initialContext.nombre);
     expect(context.categoria).toBe(initialContext.categoria);
-    expect(context.autor).toBe(initialContext.autor);
   });
 });

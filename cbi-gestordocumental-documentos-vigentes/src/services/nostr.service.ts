@@ -2,7 +2,7 @@
  * Nostr Service - Handle Nostr relay communication
  */
 
-import { SimplePool, Event, getPublicKey, finalizeEvent, nip19 } from 'nostr-tools';
+import { SimplePool, getPublicKey, finalizeEvent, nip19 } from 'nostr-tools';
 import type { NostrEvent } from 'nostr-tools';
 import { logger } from '../utils/logger.js';
 
@@ -80,7 +80,7 @@ export class NostrService {
     
     const sub = this.pool.subscribeMany(
       [this.relayUrl],
-      filters,
+      filters as any,
       {
         onevent: (event) => {
           logger.debug({ eventId: event.id, kind: event.kind }, 'Event received');
@@ -116,7 +116,7 @@ export class NostrService {
    */
   async queryEvents(filters: any[]): Promise<NostrEvent[]> {
     try {
-      const events = await this.pool.querySync([this.relayUrl], filters);
+      const events = await this.pool.querySync([this.relayUrl], filters as any);
       logger.info({ count: events.length, filters }, 'Events queried');
       return events;
     } catch (error) {
@@ -130,7 +130,7 @@ export class NostrService {
    */
   async disconnect(): Promise<void> {
     // Close all subscriptions
-    for (const [id, sub] of this.subscriptions) {
+    for (const [_id, sub] of this.subscriptions) {
       sub.close();
     }
     this.subscriptions.clear();

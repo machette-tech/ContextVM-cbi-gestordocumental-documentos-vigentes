@@ -9,7 +9,7 @@
  */
 
 import { setup, assign, fromPromise } from 'xstate';
-import type { DocumentoVigenteContext, DocumentoVigenteEvents } from '../types/documento.js';
+import type { DocumentoVigenteContext, DocumentoVigenteEvents, EstadoDocumento } from '../types/documento.js';
 import { logger } from '../utils/logger.js';
 
 export const documentoVigenteMachine = setup({
@@ -52,54 +52,82 @@ export const documentoVigenteMachine = setup({
     },
   },
   actions: {
-    asignarDatosIniciales: assign({
-      tipo_documento: ({ event }) => event.tipo_documento,
-      codigo: ({ event }) => event.codigo,
-      nombre: ({ event }) => event.nombre,
-      categoria: ({ event }) => event.categoria,
-      formato: ({ event }) => event.formato,
-      version: ({ event }) => event.version,
-      descripcion: ({ event }) => event.descripcion,
-      requisitos_legales: ({ event }) => event.requisitos_legales,
-      campos_obligatorios: ({ event }) => event.campos_obligatorios,
-      plantilla_url: ({ event }) => event.plantilla_url,
-      metadata: ({ event }) => event.metadata,
-      estado_actual: () => 'registro',
-      fecha_creacion: () => new Date().toISOString(),
+    asignarDatosIniciales: assign(({ event }) => {
+      if (event.type !== 'CREAR') return {};
+      return {
+        tipo_documento: event.tipo_documento,
+        codigo: event.codigo,
+        nombre: event.nombre,
+        categoria: event.categoria,
+        formato: event.formato,
+        version: event.version,
+        descripcion: event.descripcion,
+        requisitos_legales: event.requisitos_legales,
+        campos_obligatorios: event.campos_obligatorios,
+        plantilla_url: event.plantilla_url,
+        metadata: event.metadata,
+        estado_actual: 'registro' as EstadoDocumento,
+        fecha_creacion: new Date().toISOString(),
+      };
     }),
-    marcarValidacionIniciada: assign({
-      estado_actual: () => 'validacion',
-      validador_id: ({ event }) => event.validador_id,
-      fecha_validacion: () => new Date().toISOString(),
+    marcarValidacionIniciada: assign(({ event }) => {
+      if (event.type !== 'VALIDAR') return {};
+      return {
+        estado_actual: 'validacion' as EstadoDocumento,
+        validador_id: event.validador_id,
+        fecha_validacion: new Date().toISOString(),
+      };
     }),
-    marcarAprobado: assign({
-      estado_actual: () => 'aprobado',
-      aprobador_id: ({ event }) => event.aprobador_id,
-      comentarios_aprobacion: ({ event }) => event.comentarios,
-      fecha_aprobacion: () => new Date().toISOString(),
+    marcarAprobado: assign(({ event }) => {
+      if (event.type !== 'APROBAR') return {};
+      return {
+        estado_actual: 'aprobado' as EstadoDocumento,
+        aprobador_id: event.aprobador_id,
+        comentarios_aprobacion: event.comentarios,
+        fecha_aprobacion: new Date().toISOString(),
+      };
     }),
-    marcarRechazado: assign({
-      estado_actual: () => 'rechazado',
-      motivo_rechazo: ({ event }) => event.motivo,
-      rechazado_por: ({ event }) => event.rechazado_por,
-      fecha_rechazo: () => new Date().toISOString(),
+    marcarRechazado: assign(({ event }) => {
+      if (event.type !== 'RECHAZAR') return {};
+      return {
+        estado_actual: 'rechazado' as EstadoDocumento,
+        motivo_rechazo: event.motivo,
+        rechazado_por: event.rechazado_por,
+        fecha_rechazo: new Date().toISOString(),
+      };
     }),
-    marcarVigente: assign({
-      estado_actual: () => 'vigente',
-      vigencia_desde: ({ event }) => event.vigencia_desde || new Date().toISOString(),
-      vigencia_hasta: ({ event }) => event.vigencia_hasta,
-      activado_por: ({ event }) => event.activado_por,
-      fecha_activacion: () => new Date().toISOString(),
+    marcarVigente: assign(({ event }) => {
+      if (event.type !== 'ACTIVAR' && event.type !== 'REACTIVAR') return {};
+      if (event.type === 'ACTIVAR') {
+        return {
+          estado_actual: 'vigente' as EstadoDocumento,
+          vigencia_desde: event.vigencia_desde || new Date().toISOString(),
+          vigencia_hasta: event.vigencia_hasta,
+          activado_por: event.activado_por,
+          fecha_activacion: new Date().toISOString(),
+        };
+      }
+      return {
+        estado_actual: 'vigente' as EstadoDocumento,
+        activado_por: event.activado_por,
+        fecha_activacion: new Date().toISOString(),
+      };
     }),
-    marcarObsoleto: assign({
-      estado_actual: () => 'obsoleto',
-      motivo_obsolescencia: ({ event }) => event.motivo,
-      obsoleto_por: ({ event }) => event.obsoleto_por,
-      fecha_obsolescencia: () => new Date().toISOString(),
-      reemplazado_por: ({ event }) => event.reemplazado_por,
+    marcarObsoleto: assign(({ event }) => {
+      if (event.type !== 'OBSOLETER') return {};
+      return {
+        estado_actual: 'obsoleto' as EstadoDocumento,
+        motivo_obsolescencia: event.motivo,
+        obsoleto_por: event.obsoleto_por,
+        fecha_obsolescencia: new Date().toISOString(),
+        reemplazado_por: event.reemplazado_por,
+      };
     }),
-    registrarError: assign({
-      error: ({ event }) => event.error,
+    registrarError: assign(({ event }) => {
+      if (event.type !== 'ERROR') return {};
+      return {
+        error: event.error,
+      };
     }),
   },
 }).createMachine({
