@@ -110,7 +110,8 @@ jobs:
       uses: docker/setup-buildx-action@v3
     
     - name: Build Docker image
-      run: docker build -t cbi-gestordocumental-documentos-vigentes:test -f cbi-gestordocumental-documentos-vigentes/Dockerfile .
+      working-directory: ./cbi-gestordocumental-documentos-vigentes
+      run: docker build -t cbi-gestordocumental-documentos-vigentes:test .
     
     - name: Test Docker image
       run: docker run --rm cbi-gestordocumental-documentos-vigentes:test node --version
