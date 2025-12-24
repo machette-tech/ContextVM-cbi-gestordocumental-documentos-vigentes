@@ -44,18 +44,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: cbi-gestordocumental-documentos-vigentes/package-lock.json
     
     - name: Install dependencies
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
       run: npm ci
     
     - name: Run TypeScript compiler
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
       run: npx tsc --noEmit
     
     - name: Run tests
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         RELAY_URL_INTERNAL: ws://localhost:7777
@@ -67,7 +63,7 @@ jobs:
       uses: codecov/codecov-action@v4
       continue-on-error: true
       with:
-        file: ./cbi-gestordocumental-documentos-vigentes/coverage/coverage-final.json
+        file: ./coverage/coverage-final.json
         flags: unittests
         fail_ci_if_error: false
 
@@ -114,7 +110,6 @@ jobs:
       uses: docker/setup-buildx-action@v3
     
     - name: Build Docker image
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
       run: docker build -t cbi-gestordocumental-documentos-vigentes:test .
     
     - name: Test Docker image
@@ -136,9 +131,6 @@ jobs:
         cache-dependency-path: cbi-gestordocumental-documentos-vigentes/package-lock.json
     
     - name: Install dependencies
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
       run: npm ci
     
     - name: Run linter
-      working-directory: ./cbi-gestordocumental-documentos-vigentes
-      run: npx tsc --noEmit
