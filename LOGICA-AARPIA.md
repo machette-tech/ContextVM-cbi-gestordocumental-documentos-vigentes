@@ -1,5 +1,10 @@
 # LOGICA AARPIA - ContextVM CBI Gestor Documental Documentos Vigentes
 
+
+## Nomenclatura del Proyecto
+
+**Dominio.Subdominio.Proceso:** `cbi.gestordocumental.documentos-vigentes`
+
 **Versión**: 1.1.0  
 **Fecha**: 2024-12-23
 
