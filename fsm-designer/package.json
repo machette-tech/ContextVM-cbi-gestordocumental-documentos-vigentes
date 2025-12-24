@@ -6,7 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:visual": "playwright test e2e/visual-regression.spec.ts",
+    "test:all": "npm run test:run && npm run test:e2e",
+    "test:ci": "npm run lint && npm run test:coverage && npm run build && npm run test:e2e"
   },
   "dependencies": {
     "@statelyai/inspect": "^0.4.0",
