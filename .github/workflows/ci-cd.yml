@@ -128,7 +128,6 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: cbi-gestordocumental-documentos-vigentes/package-lock.json
     
     - name: Install dependencies
       run: npm ci
