@@ -133,22 +133,25 @@ export const documentoVigenteMachine = setup({
 }).createMachine({
   id: 'documentoVigente',
   initial: 'registro',
-  context: {
-    token_id: '',
-    instance_id: '',
-    tipo_documento: '',
-    codigo: '',
-    nombre: '',
-    categoria: '',
-    formato: '',
-    version: '',
-    estado_actual: 'registro',
-  },
+  context: ({ input }) => ({
+    ...(input || {}),
+    token_id: input?.token_id || '',
+    instance_id: input?.instance_id || '',
+    tipo_documento: input?.tipo_documento || '',
+    codigo: input?.codigo || '',
+    nombre: input?.nombre || '',
+    categoria: input?.categoria || '',
+    formato: input?.formato || '',
+    version: input?.version || '',
+    estado_actual: input?.estado_actual || 'registro',
+  }),
   states: {
     registro: {
       description: 'Documento recién creado, captura de datos básicos',
-      entry: ['asignarDatosIniciales'],
       on: {
+        CREAR: {
+          actions: ['asignarDatosIniciales'],
+        },
         VALIDAR: {
           target: 'validacion',
           guard: 'tieneMetadatosCompletos',
