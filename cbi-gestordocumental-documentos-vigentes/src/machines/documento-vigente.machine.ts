@@ -16,6 +16,7 @@ export const documentoVigenteMachine = setup({
   types: {
     context: {} as DocumentoVigenteContext,
     events: {} as DocumentoVigenteEvents,
+    input: {} as Partial<DocumentoVigenteContext>,
   },
   actors: {
     guardarEnBD: fromPromise(async ({ input }: { input: DocumentoVigenteContext }) => {
